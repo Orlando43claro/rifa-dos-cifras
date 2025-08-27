@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rifa de 2 Cifras</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 { text-align: center; }
+        .info { margin-bottom: 20px; text-align: center; }
+        form { display: flex; flex-direction: column; gap: 15px; }
+        label { font-weight: bold; }
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        #resultados { margin-top: 20px; }
+        .sorteo { background: #e8f4fd; padding: 10px; margin-bottom: 10px; border-radius: 4px; }
+        ul { list-style-type: none; padding: 0; }
+        #talonario {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .ticket {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+        .ticket.reserved { background-color: #ffff99; }
+        .ticket.winner { background-color: #ff9999; font-weight: bold; }
+        @media (max-width: 480px) {
+            .container { padding: 10px; }
+            .ticket { width: 40px; height: 40px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Rifa de 2 Cifras</h1>
+        <div class="info">
+            <p><strong>Responsable:</strong> <span id="responsable"></span></p>
+            <p><strong>Premio:</strong> <span id="premio"></span></p>
+        </div>
+        <form id="rifaForm">
+            <label for="cantidad">Cantidad de ganadores:</label>
+            <input type="number" id="cantidad" min="1" max="100" value="1" required>
+            <button type="submit">Generar Ganadores</button>
+        </form>
+        <h2>Talonario de Números (00-99)</h2>
+        <div id="talonario"></div>
+        <div id="resultados">
+            <h2>Último Sorteo</h2>
+            <div id="ultimoSorteo"></div>
+            <h2>Sorteos Previos</h2>
+            <div id="sorteosPrevios"></div>
+        </div>
+    </div>
+    <script>
+        const cifras = 2;
+        const form = document.getElementById('rifaForm');
+        const talonarioDiv = document.getElementById('talonario');
+        const ultimoSorteoDiv = document.getElementById('ultimoSorteo');
+        const sorteosPreviosDiv = document.getElementById('sorteosPrevios');
+        const responsableSpan = document.getElementById('responsable');
+        const premioSpan = document.getElementById('premio');
+
+        responsableSpan.textContent = localStorage.getItem('rifaResponsable') || 'No especificado';
+        premioSpan.textContent = localStorage.getItem('rifaPremio') || 'No especificado';
+
+        let sorteos = JSON.parse(localStorage.getItem('sorteos2')) || [];
+        let reserved = new Set(JSON.parse(localStorage.getItem('reserved2')) || []);
+
+        // Manejar el botón de "atrás" del celular
+        window.onpopstate = function(event) {
+            if (event) {
+                // Intentar cerrar la aplicación
+                if (navigator.app && navigator.app.exitApp) {
+                    navigator.app.exitApp(); // Compatible con Cordova si está integrado
+                } else {
+                    window.close(); // Alternativa para cerrar la ventana (puede no funcionar en todos los casos)
+                }
+            }
+        };
+
+        function mostrarSorteos() {
+            sorteosPreviosDiv.innerHTML = '';
+            sorteos.forEach((sorteo, index) => {
+                const div = document.createElement('div');
+                div.classList.add('sorteo');
+                div.innerHTML = `<p><strong>Sorteo #${index + 1}</strong> - ${sorteo.cantidad} ganadores</p><ul>${sorteo.ganadores.map((g, i) => `<li>${i + 1}º Ganador: ${g}</li>`).join('')}</ul>`;
+                sorteosPreviosDiv.appendChild(div);
+            });
+        }
+        mostrarSorteos();
+
+        function generarTalonario() {
+            const max = Math.pow(10, cifras);
+            talonarioDiv.innerHTML = '';
+            for (let i = 0; i < max; i++) {
+                const num = i.toString().padStart(cifras, '0');
+                const div = document.createElement('div');
+                div.classList.add('ticket');
+                div.textContent = num;
+                div.dataset.num = num;
+                if (reserved.has(num)) div.classList.add('reserved');
+                div.addEventListener('click', toggleReserve);
+                talonarioDiv.appendChild(div);
+            }
+        }
+
+        function toggleReserve(e) {
+            const div = e.target;
+            const num = div.dataset.num;
+            div.classList.toggle('reserved');
+            if (reserved.has(num)) reserved.delete(num);
+            else reserved.add(num);
+            localStorage.setItem('reserved2', JSON.stringify(Array.from(reserved)));
+        }
+
+        function generarGanadores(cantidad) {
+            const reservedList = Array.from(reserved);
+            if (reservedList.length < cantidad) {
+                alert('No hay suficientes números apartados. Reserva más números en el talonario.');
+                return null;
+            }
+            for (let i = reservedList.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [reservedList[i], reservedList[j]] = [reservedList[j], reservedList[i]];
+            }
+            return reservedList.slice(0, cantidad);
+        }
+
+        function limpiarWinners() {
+            document.querySelectorAll('.ticket.winner').forEach(el => el.classList.remove('winner'));
+        }
+
+        function marcarWinners(ganadores) {
+            ganadores.forEach(num => {
+                const ticket = talonarioDiv.querySelector(`[data-num="${num}"]`);
+                if (ticket) ticket.classList.add('winner');
+            });
+        }
+
+        generarTalonario();
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const cantidad = parseInt(document.getElementById('cantidad').value);
+            if (cantidad > Math.pow(10, cifras)) {
+                alert('La cantidad de ganadores no puede exceder el total de números posibles (100).');
+                return;
+            }
+            const ganadores = generarGanadores(cantidad);
+            if (!ganadores) return;
+
+            limpiarWinners();
+            marcarWinners(ganadores);
+
+            ultimoSorteoDiv.innerHTML = `<p><strong>${cantidad} ganadores</strong></p><ul>${ganadores.map((g, i) => `<li>${i + 1}º Ganador: ${g}</li>`).join('')}</ul>`;
+
+            sorteos.push({ cantidad, ganadores });
+            localStorage.setItem('sorteos2', JSON.stringify(sorteos));
+            mostrarSorteos();
+        });
+    </script>
+</body>
+</html>
