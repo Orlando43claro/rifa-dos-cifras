@@ -584,7 +584,7 @@
             <p><strong>Premio:</strong> <span id="premio"></span></p>
         </div>
         <div class="controles">
-            <span id="contadorVendidos">Vendidos: 0/1000</span>
+            <span id="contadorVendidos">Apartados y Pagados: 0/1000</span>
             <div class="filtros">
                 <button id="filtroTodo" class="filtro activo">Todo <span class="notificacion-filtro" id="contadorTodo">1000</span></button>
                 <button id="filtroDisponible" class="filtro">Disponible <span class="notificacion-filtro" id="contadorDisponible">1000</span></button>
@@ -900,9 +900,10 @@
             const contadorPagado = document.getElementById('contadorPagado');
 
             const total = 1000;
-            const disponibles = total - seleccionados.length - pagados.length;
+            const apartadosYPagados = seleccionados.length + pagados.length;
+            const disponibles = total - apartadosYPagados;
 
-            contador.textContent = `Vendidos: ${pagados.length}/1000`;
+            contador.textContent = `Apartados y Pagados: ${apartadosYPagados}/1000`;
             contadorTodo.textContent = total;
             contadorDisponible.textContent = disponibles;
             contadorApartado.textContent = seleccionados.length;
